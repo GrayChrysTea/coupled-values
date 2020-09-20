@@ -22,4 +22,12 @@
 # SOFTWARE.
 #
 
-from .base import CoupledValuesError, AlreadyInCoupledValuesError
+
+from coupledvalues.errors.baseerrors import (
+    BaseCoupledValuesError,
+    BaseExistenceError
+)
+from coupledvalues.errors.existenceerrors import (
+    AlreadyExistsError,
+    ClashingError
+)

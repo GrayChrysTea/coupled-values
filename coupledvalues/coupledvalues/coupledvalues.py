@@ -22,198 +22,291 @@
 # SOFTWARE.
 #
 
-from .base import BaseCoupledValues
-from ..errors import *
-from ..pairs import *
 
-class CoupledValues(BaseCoupledValues):
+from coupledpairs import *
+from coupledvalues.constants import *
+from coupledvalues.coupledvalues.basecoupledvalues import BaseCoupledValues
+from coupledvalues.errors import *
+
+__all__ = [
+    "create_pairs",
+    "CoupledValues"
+]
+
+
+def create_pairs(values):
     """
-    CoupledValues interface class
+    Functions like make_pairs but also accepts BaseCoupledValues and its
+    descendents.
 
-    All CoupledValues classes are derived from this class.
+    For more information, do:
+
+        >>> print(help(coupledpairs.make_pairs))
 
     Parameters
     ----------
-    initial_values=[] : list, dict, pair or tuple
-        Pairs that you would like to initialize the coupled-values with.
-        Your initial values must be packaged as a
-        1. list of tuples or pairs,
-        2. dictionary, or
-        3. tuple with 2 values,
-        4. or a Pair.
-    
-    ignore_typing=False : bool
-        Whether to ignore erroneous input during introduction of a series of
-        new pairs
-    
+    value: CoupledPair, list, set, tuple or dict, BaseCoupledValues
+
+    Returns
+    -------
+    list of CoupledPair
+    """
+    if type(values) in {CoupledPair, list, set, tuple, dict}:
+        return make_pairs(values)
+    elif isinstance(values, BaseCoupledValues):
+        return list(values._pairs)
+    else:
+        raise TypeError(
+            "values must be an instance of BaseCoupledValues, CoupledPairs, "
+            + "list, tuple or dict"
+        )
+
+
+class CoupledValues(BaseCoupledValues):
+    """
+    A set of CoupledPair objects with extra functionality.
+
+    Example
+    -------
+
+        >>> my_cv = CoupledValues({"a": "b", "c": "d"}, error_mode=ERROR_ON)
+
+    Parameters
+    ----------
+    init_values: CoupledPair, list, set, tuple or dict, BaseCoupledValues
+
+    error_mode: str = ERROR_ON
+        Whether to show error or a placeholder value when running certain
+        methods. The only accepted values are:
+            coupledvalues.ERROR_ON,
+            coupledvalues.ERROR_OFF
+
     Raises
     ------
-    AlreadyInCoupledValuesError
-        If you try to add a pair where one of its values already exist in
-        self._pairs
-
     TypeError
-        If you pass a wrong type in
-
-    Attributes
-    ----------
-    _pairs : list
-        All the pairs this coupled values object has
+        If init_value is not an instance of any of the classes specified under
+        Parameters
     
-    pairs : list
-        All the pairs this coupled values object has
+    ValueError
+        If error_mode is not coupledvalues.ERROR_ON or coupledvalues.ERROR_OFF
+    
+    Returns
+    -------
+    CoupledValues
     """
-    def __init__(self, initial_values=[], ignore_typing=False):
-        super().__init__()
-        self.ignore_typing = ignore_typing
-        if type(initial_values) == list:
-            self._initialize_values(initial_values, ignore_typing)
-        elif type(initial_values) == dict:
-            self._initialize_values(
-                create_pairs_with_dict(initial_values),
-                ignore_typing
-            )
-        elif isinstance(initial_values, BaseCoupledValues):
-            temp_pairs = []
-            temp_pairs.extend(initial_values._pairs)
-            self._append_more_pairs(temp_pairs)
-        elif type(initial_values) == Pair:
-            self._append_pair(initial_values)
-        elif type(initial_values) == tuple:
-            self._append_pair(Pair(initial_values[0], initial_values[1]))
-        else:
-            raise TypeError(
-                "initial_values must be a list, dict, tuple or coupledvalues.pair"
-            )
-    
 
-    def _append_more_pairs(self, pairs):
-        if type(pairs) == list:
-            self._append_values(
-                pairs=pairs,
-                replace=False,
-                ignore_typing=self.ignore_typing
-            )
-        elif type(pairs) == dict:
-            self._append_values(
-                pairs=create_pairs_with_dict(pairs),
-                replace=False,
-                ignore_typing=self.ignore_typing
-            )
-        elif isinstance(pairs, BaseCoupledValues):
-            self._append_values(
-                pairs=pairs._pairs,
-                replace=False,
-                ignore_typing=self.ignore_typing
-            )
-        elif type(pairs) == Pair:
-            self._append_values(
-                pairs=[pairs],
-                replace=False,
-                ignore_typing=self.ignore_typing
-            )
-        elif type(pairs) == tuple:
-            self._append_values(
-                pairs=[Pair(pairs[0], pairs[1])],
-                replace=False,
-                ignore_typing=self.ignore_typing
-            )
-        else:
-            raise TypeError(
-                "pair must be a list, dictionary, tuple or coupledvalues.pair"
-            )
-    
+    ### ~~~~~~~~~~~~~~~~~~~~~~~~~~ CREATE rud ~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 
-    def __contains__(self, value):
-        return self._contains(value)
-    
+    def __init__(
+        self,
+        init_values=[],
+        error_mode=ERROR_ON
+    ):
+        super().__init__(error_mode=error_mode)
+        self._push_pairs(create_pairs(init_values))
 
-    def __len__(self):
-        return len(self._pairs)
-
+    # - ## ~~~~~~~~~~~~~~~~~ TEMPORARY PUSH SECTION ~~~~~~~~~~~~~~~~~ ##
 
     def __add__(self, pairs):
-        new_coupled_values = CoupledValues(
-            initial_values=self._pairs,
-            ignore_typing=False
-        )
-        new_coupled_values._append_more_pairs(pairs)
-        return new_coupled_values
+        return self.temporary_push(pairs)
 
+    def __radd__(self, pairs):
+        return self.temporary_push(pairs)
+
+    def temporary_push(self, pairs):
+        """
+        Makes a new CoupledValues object with self and another valid set of
+        pairs acceptable to create_pairs.
+        
+        Parameters
+        ----------
+        pairs: CoupledPair, list, set, tuple or dict, BaseCoupledValues
+
+        Raises
+        ------
+        ClashingError
+            If two of the pairs clash
+
+        Returns
+        -------
+        new_cv: CoupledValues
+        """
+        new_cv = CoupledValues()
+        new_cv._push_pairs(create_pairs(self))
+        new_cv._push_pairs(create_pairs(pairs))
+        return new_cv
+
+    # - ## ~~~~~~~~~~~~~~~~~ PERMANENT PUSH SECTION ~~~~~~~~~~~~~~~~~ ##
 
     def __iadd__(self, pairs):
-        self._append_more_pairs(pairs)
-    
+        self.push(pairs)
+        return self
 
     def __lshift__(self, pairs):
-        self._append_more_pairs(pairs)
-    
+        self.push(pairs)
+        return self
 
     def __rrshift__(self, pairs):
-        self._append_more_pairs(pairs)
-    
+        self.push(pairs)
+        return self
 
-    def __nonzero__(self):
-        return len(self._pairs) > 0
-    
-
-    def __eq__(self, other_coupled_values):
-        return self._is_similar_to(other_coupled_values)
-    
-
-    def __str__(self):
-        if len(self._pairs) == 0:
-            return "CoupledValues([])"
-        output = "CoupledValues([ "
-        for pair in self._pairs:
-            output += f"{str(pair.first)} ~ {str(pair.second)}, "
-        output += "])"
-        return output
-    
-
-    def __repr__(self):
-        return str(self)
-    
-
-    def __getitem__(self, key):
-        pair = self._get_pair_with_single(key)
-        if key == pair.first:
-            return pair.second
-        else:
-            return pair.first
-    
-
-    def __setitem__(self, key, value):
-        pair = Pair(key, value)
-        self._append_or_update_pair(pair)
-    
-
-    @property
-    def pairs(self):
-        return self._pairs
-    
-
-    def pop(self, key):
+    def push(self, pairs):
         """
-        Pops pairs out with a key to the pair
+        Push new pairs into the set.
 
         Parameters
         ----------
-        key
-            Key to the pair, can be the first item or second item of the pair
-        
+        pairs: CoupledPair, list, set, tuple or dict, BaseCoupledValues
+
         Raises
         ------
-        ValueError
-            If the key doesn't exist
+        ClashingError
+            If two of the pairs clash
+
+        Returns
+        -------
+        None
+        """
+        self._push_pairs(create_pairs(pairs))
+        return None
+
+    ### ~~~~~~~~~~~~~~~~~~~~~~~~~~ c READ ud ~~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+
+    def __contains__(self, key):
+        return self.contains(key)
+
+    def __getitem__(self, key):
+        return self.get_value(key)
+
+    def __repr__(self):
+        return self.to_str()
+
+    def __str__(self):
+        return self.to_str()
+
+    def contains(self, key):
+        """
+        Checks if a key is in one of the pairs in the CoupledValues object.
+
+        Parameters
+        ----------
+        key: object
+
+        Returns
+        -------
+        exists: bool
+        """
+        return self._contains(key)
+
+    def get_value(self, key):
+        """
+        Get the value of one of the items in a pair with the value of its
+        counterpart.
+
+        Example
+        -------
+
+            >>> alphabet = "abcdefghijklmnopqrstuvwxyz"
+            >>> my_dict = {alphabet[i]: alphabet[i+1] for i in range(0, 25, 2)}
+                # Odd letters are paired with even letters
+                # i.e. 'a' ~ 'b', 'c' ~ 'd', ...
+            >>> my_cv = CoupledValues(my_dict)
+            >>> print(my_cv.get_value("b"))
+            'a'
+        
+        Parameters
+        ----------
+        key: object
+
+        Raises
+        ------
+        KeyError
+            If the key does not exist in the set and error_mode is ERROR_ON
         
         Returns
         -------
-        counterpart
-            The counterpart of the key to the pair that has been popped off
+        value: object
         """
-        pair = self._pop_with_single(key)
-        if key == pair.first:
-            return pair.second
-        else:
-            return pair.first
+        pair = self._get_pair(key)
+        if pair is None:
+            return None
+        return pair.counterpart(key)
+
+    def to_str(self):
+        """
+        Converts CoupledValues to string.
+
+        Returns
+        -------
+        string
+        """
+        string = "CoupledValues(["
+        for pair in self._pairs:
+            string += pair.to_mini_str() + ", "
+        string = string[:-2]
+        string += "])"
+        return string
+
+    ### ~~~~~~~~~~~~~~~~~~~~~~~~~ cr UPDATE d ~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+
+    def __setitem__(self, key, value):
+        self.update(key, value)
+        return None
+
+    def update(self, key, value):
+        """
+        Update a value of one of the pairs with its key. See CoupledPair.modify
+        for more information.
+
+        Parameters
+        ----------
+        key: object
+        
+        value: object
+
+        Raises
+        ------
+        KeyError
+            If the key does not exist
+
+        ValueError
+            If key == value
+        
+        Returns
+        -------
+        None
+        """
+        self._add_or_update(key, value)
+        return None
+
+    ### ~~~~~~~~~~~~~~~~~~~~~~~~~~ cru DELETE ~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
+
+    def clear(self):
+        """
+        Clears the entire set.
+
+        Returns
+        -------
+        None
+        """
+        self._clear()
+
+    def pop(self, key):
+        """
+        Pops one of the pairs by key and return its value.
+
+        Parameters
+        ----------
+        key: object
+
+        Raises
+        ------
+        KeyError
+            If key does not exist and error_mode is ERROR_ON
+        
+        Returns
+        -------
+        value: object
+            Popped value, None if key not found and error_mode is ERROR_OFF
+        """
+        return self._remove_and_get_counterpart(key)

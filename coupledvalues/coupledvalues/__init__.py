@@ -22,5 +22,12 @@
 # SOFTWARE.
 #
 
-from .base import BaseCoupledValues
-from .coupledvalues import CoupledValues
+
+from coupledvalues.coupledvalues.basecoupledvalues import *
+from coupledvalues.coupledvalues.coupledvalues import *
+
+__all__ = [
+    "BaseCoupledValues",
+    "CoupledValues",
+    "create_pairs"
+]
