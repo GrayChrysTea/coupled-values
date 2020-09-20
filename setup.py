@@ -14,7 +14,6 @@ setup(
     name="coupled-values",
     version="1.0.0",
     author="GrayChrysTea",
-    author_email="gray.chrysanthemum@gmail.com",
 
     packages=[
         "coupledpairs",
