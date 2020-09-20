@@ -20,18 +20,15 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-# 
+#
 
 
-from coupledvalues.constants import *
-from coupledvalues.coupledvalues import *
-from coupledvalues.errors import *
+from coupledvalues.errors.baseerrors import BaseExistenceError
 
 
-__all__ = [
-    "ERROR_OFF", "ERROR_ON",
-    "BaseCoupledValuesError", "BaseExistenceError",
-    "AlreadyExistsError", "ClashingError",
-    "BaseCoupledValues",
-    "CoupledValues", "create_pairs"
-]
+class AlreadyExistsError(BaseExistenceError):
+    pass
+
+
+class ClashingError(BaseExistenceError):
+    pass
