@@ -124,6 +124,18 @@ class CoupledPair(object):
             self.has(other_pair.second)
         ]
         return any(conditions)
+    
+    def copy(self):
+        """
+        Copy the current values including references into a new CoupledPair
+        instance.
+
+        Returns
+        -------
+        new_pair: CoupledPair
+            The copied pair
+        """
+        return CoupledPair(self.first, self.second)
 
     def counterpart(self, key):
         """
@@ -230,13 +242,7 @@ class CoupledPair(object):
         (first, second): tuple of values
             Values that have been set up to be converted to string
         """
-        first = self.first
-        second = self.second
-        if type(first) == str:
-            first = repr(first)
-        if type(second) == str:
-            second = repr(second)
-        return first, second
+        return repr(self.first), repr(self.second)
 
     def to_str(self):
         """
@@ -259,7 +265,7 @@ class CoupledPair(object):
         str
         """
         s_str = self.setup_str()
-        return f"{s_str[0]}~{s_str[1]}"
+        return f"({s_str[0]}, {s_str[1]})"
 
     ### ~~~~~~~~~~~~~~~~~~~~~~~~~ cr UPDATE d ~~~~~~~~~~~~~~~~~~~~~~~~~~ ###
 
